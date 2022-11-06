@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import pcapy as p
 from scapy.all import *
@@ -13,36 +14,52 @@ def readfiletypeofpcap(filename, filtro):
     sessions = file.sessions()
     count = 1
     for session in sessions:
-        if not session.lower().__contains__("proto=" + filtro.lower()):
+        if not session.lower().__contains__(filtro.lower()):
             continue
 
         for pacote in sessions[session]:
             try:
-                value = Protocol(filtro, count)
+                value = Protocol(filtro, count, pacote.time)
                 lista.append(value)
+                count += 1
             except IndexError:
                 pass
+    return lista
 
 
-def plot():
+def plot(sctps, udps):
     plt.style.use('_mpl-gallery')
-
-    # make data
-    x = np.linspace(0, 10, 100)
-    y = 4 + 2 * np.sin(2 * x)
 
     # plot
     fig, ax = plt.subplots()
 
-    ax.plot(x, y, linewidth=2.0)
+    # make the data
+    totalsctp = 0.0
+    for data in sctps:
+        print(*["protocol: ", data.proto, ", count: ", data.num, ", tempo: ", data.tempo])
+        totalsctp += data.tempo
+        ax.plot(totalsctp, data.num, 'o', color='red', picker=True)
 
-    ax.set(xlim=(0, 8), xticks=np.arange(1, 8),
-           ylim=(0, 8), yticks=np.arange(1, 8))
+    totaludp = 0.0
+    for udp in udps:
+        print(*["protocol: ", udp.proto, ", count: ", udp.num, ", tempo: ", udp.tempo])
+        totaludp += udp.tempo
+        ax.plot(totaludp, udp.num, 'o', color='blue', picker=True)
 
+    plt.title('protocolos')
+    red_patch = patches.Patch(color='red', label='SCTP')
+    blue_patch = patches.Patch(color='blue', label='UDP')
+    green_patch = patches.Patch(color='green', label='TCP')
+
+    ax.set_xlabel("tempo(s)")
+    ax.set_ylabel("pacotes")
+    plt.legend(handles=[red_patch, blue_patch, green_patch])
+    plt.tight_layout()
     plt.show()
 
 
 if __name__ == '__main__':
-    readfiletypeofpcap("wireSCTP.pcap", "SCTP")
-    plot()
+    SCTPData = readfiletypeofpcap("wireSCTP.pcap", "SCTP")
+    UDPData = readfiletypeofpcap("wireUDP.pcap", "UDP")
+    plot(SCTPData, UDPData)
     print("conclusion")
